@@ -1,0 +1,30 @@
+# Test files
+**/__tests__/**
+*.test.ts
+*.test.js
+*.spec.ts
+*.spec.js
+
+# Development files
+.vscode/
+.idea/
+*.log
+.DS_Store
+
+# Build artifacts (Vercel will build fresh)
+dist/
+
+# Dependencies (Vercel installs these)
+node_modules/
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+README.md
+*.md
+
+# Config files that aren't needed
+vitest.config.ts
+
