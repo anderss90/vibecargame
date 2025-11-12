@@ -5,10 +5,10 @@ export class Car {
     public sprite: Phaser.Physics.Matter.Sprite;
     private scene: Scene;
     private inputKeys: {
-        up: Phaser.Input.Keyboard.Key[];
-        down: Phaser.Input.Keyboard.Key[];
-        left: Phaser.Input.Keyboard.Key[];
-        right: Phaser.Input.Keyboard.Key[];
+        up: (Phaser.Input.Keyboard.Key | { isDown: boolean })[];
+        down: (Phaser.Input.Keyboard.Key | { isDown: boolean })[];
+        left: (Phaser.Input.Keyboard.Key | { isDown: boolean })[];
+        right: (Phaser.Input.Keyboard.Key | { isDown: boolean })[];
     } | null = null;
     
     private readonly maxSpeed = 100;
@@ -46,12 +46,12 @@ export class Car {
     }
 
     setInputKeys(keys: {
-        up: Phaser.Input.Keyboard.Key[];
-        down: Phaser.Input.Keyboard.Key[];
-        left: Phaser.Input.Keyboard.Key[];
-        right: Phaser.Input.Keyboard.Key[];
+        up: (Phaser.Input.Keyboard.Key | { isDown: boolean })[];
+        down: (Phaser.Input.Keyboard.Key | { isDown: boolean })[];
+        left: (Phaser.Input.Keyboard.Key | { isDown: boolean })[];
+        right: (Phaser.Input.Keyboard.Key | { isDown: boolean })[];
     }) {
-        this.inputKeys = keys;
+        this.inputKeys = keys as any;
     }
 
     update() {

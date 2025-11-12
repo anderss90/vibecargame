@@ -18,6 +18,13 @@ export class GameScene extends Scene {
     private gameWon: boolean = false;
     private restartKey!: Phaser.Input.Keyboard.Key;
     private winText?: Phaser.GameObjects.Text;
+    private mobileControls?: Phaser.GameObjects.Container;
+    private virtualKeys!: {
+        up: { isDown: boolean };
+        down: { isDown: boolean };
+        left: { isDown: boolean };
+        right: { isDown: boolean };
+    };
 
     constructor() {
         super({ key: 'GameScene' });
@@ -58,50 +65,61 @@ export class GameScene extends Scene {
         // Add WASD keys
         const wasd = this.input.keyboard!.addKeys('W,S,A,D');
         
-        // Store input keys
+        // Create virtual keys for mobile controls
+        this.virtualKeys = {
+            up: { isDown: false },
+            down: { isDown: false },
+            left: { isDown: false },
+            right: { isDown: false }
+        };
+        
+        // Store input keys (combine keyboard and virtual keys)
         this.car.setInputKeys({
-            up: [this.cursors.up, wasd['W']],
-            down: [this.cursors.down, wasd['S']],
-            left: [this.cursors.left, wasd['A']],
-            right: [this.cursors.right, wasd['D']]
+            up: [this.cursors.up, wasd['W'], this.virtualKeys.up as any],
+            down: [this.cursors.down, wasd['S'], this.virtualKeys.down as any],
+            left: [this.cursors.left, wasd['A'], this.virtualKeys.left as any],
+            right: [this.cursors.right, wasd['D'], this.virtualKeys.right as any]
         });
+        
+        // Create mobile controls if on touch device
+        this.createMobileControls();
 
-        // Create speed display text
+        // Create speed display text (top of screen, 2x size)
         this.speedText = this.add.text(10, 10, 'Speed: 0', {
-            fontSize: '24px',
+            fontSize: '48px',
             color: '#ffffff',
             stroke: '#000000',
-            strokeThickness: 3
+            strokeThickness: 6
         });
         this.speedText.setScrollFactor(0); // Keep text fixed on screen (not affected by camera)
         this.speedText.setDepth(1000); // Make sure it's on top
 
-        // Create status text
-        this.statusText = this.add.text(10, 50, 'Checkpoints: 0/2', {
-            fontSize: '20px',
+        // Create status text (top of screen, 2x size)
+        this.statusText = this.add.text(10, 70, 'Checkpoints: 0/2', {
+            fontSize: '40px',
             color: '#ffff00',
             stroke: '#000000',
-            strokeThickness: 3
+            strokeThickness: 6
         });
         this.statusText.setScrollFactor(0);
         this.statusText.setDepth(1000);
 
-        // Create controls text
-        this.controlsText = this.add.text(10, 90, 'Controls: Arrow Keys or WASD', {
-            fontSize: '18px',
+        // Create controls text (top of screen, 2x size)
+        this.controlsText = this.add.text(10, 130, 'Controls: Arrow Keys or WASD', {
+            fontSize: '36px',
             color: '#ffffff',
             stroke: '#000000',
-            strokeThickness: 2
+            strokeThickness: 4
         });
         this.controlsText.setScrollFactor(0);
         this.controlsText.setDepth(1000);
 
-        // Create restart text
-        this.restartText = this.add.text(10, 120, 'Press R to restart', {
-            fontSize: '18px',
+        // Create restart text (top of screen, 2x size)
+        this.restartText = this.add.text(10, 190, 'Press R to restart', {
+            fontSize: '36px',
             color: '#ffff00',
             stroke: '#000000',
-            strokeThickness: 2
+            strokeThickness: 4
         });
         this.restartText.setScrollFactor(0);
         this.restartText.setDepth(1000);
@@ -123,6 +141,86 @@ export class GameScene extends Scene {
         this.matter.world.on('collisionstart', (event: any) => {
             this.handleCheckpointCollision(event);
         });
+    }
+
+    private createMobileControls() {
+        // Check if device supports touch or is mobile
+        const isMobile = this.sys.game.device.input.touch || 
+                        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        
+        if (!isMobile) return;
+
+        // Create container for mobile controls
+        this.mobileControls = this.add.container(0, 0);
+        this.mobileControls.setScrollFactor(0);
+        this.mobileControls.setDepth(2000);
+
+        // Larger buttons for mobile
+        const buttonSize = 100;
+        const buttonSpacing = 25;
+        const bottomMargin = 40;
+        const rightMargin = 40;
+        
+        // Calculate positions (bottom right of screen)
+        const screenWidth = this.cameras.main.width;
+        const screenHeight = this.cameras.main.height;
+        const centerX = screenWidth - rightMargin - buttonSize * 1.5;
+        const centerY = screenHeight - bottomMargin - buttonSize * 1.5;
+
+        // Create arrow buttons
+        const upButton = this.createArrowButton(centerX, centerY - buttonSize - buttonSpacing, 'up', 0);
+        const leftButton = this.createArrowButton(centerX - buttonSize - buttonSpacing, centerY, 'left', -90);
+        const downButton = this.createArrowButton(centerX, centerY + buttonSize + buttonSpacing, 'down', 180);
+        const rightButton = this.createArrowButton(centerX + buttonSize + buttonSpacing, centerY, 'right', 90);
+
+        // Add buttons to container
+        this.mobileControls.add([upButton, downButton, leftButton, rightButton]);
+    }
+
+    private createArrowButton(x: number, y: number, direction: 'up' | 'down' | 'left' | 'right', rotation: number): Phaser.GameObjects.Container {
+        const buttonSize = 100;
+        const container = this.add.container(x, y);
+        
+        // Create button background (circle)
+        const bg = this.add.circle(0, 0, buttonSize / 2, 0x333333, 0.8);
+        bg.setStrokeStyle(4, 0xffffff);
+        
+        // Create arrow shape
+        const arrow = this.add.graphics();
+        arrow.fillStyle(0xffffff);
+        arrow.lineStyle(6, 0xffffff);
+        arrow.beginPath();
+        arrow.moveTo(0, -buttonSize / 3);
+        arrow.lineTo(-buttonSize / 4, buttonSize / 6);
+        arrow.lineTo(buttonSize / 4, buttonSize / 6);
+        arrow.closePath();
+        arrow.fillPath();
+        arrow.strokePath();
+        
+        // Rotate arrow
+        arrow.setRotation(Phaser.Math.DegToRad(rotation));
+        
+        container.add([bg, arrow]);
+        container.setSize(buttonSize, buttonSize);
+        container.setInteractive(new Phaser.Geom.Circle(0, 0, buttonSize / 2), Phaser.Geom.Circle.Contains);
+        
+        // Touch/pointer events
+        container.on('pointerdown', () => {
+            this.virtualKeys[direction].isDown = true;
+            bg.setFillStyle(0x00ff00, 0.8); // Green when pressed
+        });
+        
+        container.on('pointerup', () => {
+            this.virtualKeys[direction].isDown = false;
+            bg.setFillStyle(0x333333, 0.8); // Back to gray
+        });
+        
+        container.on('pointerout', () => {
+            this.virtualKeys[direction].isDown = false;
+            bg.setFillStyle(0x333333, 0.8); // Back to gray
+        });
+        
+        return container;
     }
 
     update() {
@@ -206,12 +304,12 @@ export class GameScene extends Scene {
         this.gameWon = true;
         this.startLine.passed = true;
         
-        // Create win message
+        // Create win message (2x size)
         this.winText = this.add.text(400, 300, 'YOU WIN!', {
-            fontSize: '64px',
+            fontSize: '128px',
             color: '#00ff00',
             stroke: '#000000',
-            strokeThickness: 5
+            strokeThickness: 10
         });
         this.winText.setScrollFactor(0);
         this.winText.setDepth(2000);
