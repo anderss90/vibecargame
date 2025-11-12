@@ -10,10 +10,14 @@ export class GameScene extends Scene {
     private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
     private speedText!: Phaser.GameObjects.Text;
     private statusText!: Phaser.GameObjects.Text;
+    private controlsText!: Phaser.GameObjects.Text;
+    private restartText!: Phaser.GameObjects.Text;
     private startLine!: Checkpoint;
     private checkpoints: Checkpoint[] = [];
     private allCheckpointsPassed: boolean = false;
     private gameWon: boolean = false;
+    private restartKey!: Phaser.Input.Keyboard.Key;
+    private winText?: Phaser.GameObjects.Text;
 
     constructor() {
         super({ key: 'GameScene' });
@@ -82,6 +86,29 @@ export class GameScene extends Scene {
         this.statusText.setScrollFactor(0);
         this.statusText.setDepth(1000);
 
+        // Create controls text
+        this.controlsText = this.add.text(10, 90, 'Controls: Arrow Keys or WASD', {
+            fontSize: '18px',
+            color: '#ffffff',
+            stroke: '#000000',
+            strokeThickness: 2
+        });
+        this.controlsText.setScrollFactor(0);
+        this.controlsText.setDepth(1000);
+
+        // Create restart text
+        this.restartText = this.add.text(10, 120, 'Press R to restart', {
+            fontSize: '18px',
+            color: '#ffff00',
+            stroke: '#000000',
+            strokeThickness: 2
+        });
+        this.restartText.setScrollFactor(0);
+        this.restartText.setDepth(1000);
+
+        // Setup restart key
+        this.restartKey = this.input.keyboard!.addKey('R');
+
         // Create start line (in front of car, facing up)
         // Car starts at (4800, 3000), facing up, so start line should be above it
         this.startLine = new Checkpoint(this, 4800, 2800, 200, 40, 0x00ff00, true); // Green start line
@@ -99,6 +126,11 @@ export class GameScene extends Scene {
     }
 
     update() {
+        // Check for restart
+        if (Phaser.Input.Keyboard.JustDown(this.restartKey)) {
+            this.restartGame();
+        }
+
         if (this.car) {
             this.car.update();
             
@@ -175,23 +207,56 @@ export class GameScene extends Scene {
         this.startLine.passed = true;
         
         // Create win message
-        const winText = this.add.text(400, 300, 'YOU WIN!', {
+        this.winText = this.add.text(400, 300, 'YOU WIN!', {
             fontSize: '64px',
             color: '#00ff00',
             stroke: '#000000',
             strokeThickness: 5
         });
-        winText.setScrollFactor(0);
-        winText.setDepth(2000);
-        winText.setOrigin(0.5);
+        this.winText.setScrollFactor(0);
+        this.winText.setDepth(2000);
+        this.winText.setOrigin(0.5);
         
         // Center on screen (setScrollFactor(0) means coordinates are relative to camera viewport)
         const centerX = this.cameras.main.width / 2;
         const centerY = this.cameras.main.height / 2;
-        winText.setPosition(centerX, centerY);
+        this.winText.setPosition(centerX, centerY);
         
         this.statusText.setText('VICTORY!');
         this.statusText.setColor('#00ff00');
+    }
+
+    private restartGame() {
+        // Reset game state
+        this.allCheckpointsPassed = false;
+        this.gameWon = false;
+
+        // Reset car position and angle
+        const startX = 4800;
+        const startY = 2400 + 600;
+        const body = this.car.sprite.body as Matter.Body;
+        Matter.Body.setPosition(body, { x: startX, y: startY });
+        Matter.Body.setAngle(body, 0);
+        Matter.Body.setVelocity(body, { x: 0, y: 0 });
+        Matter.Body.setAngularVelocity(body, 0);
+
+        // Reset checkpoints
+        this.startLine.passed = false;
+        this.startLine.reset();
+        for (const checkpoint of this.checkpoints) {
+            checkpoint.passed = false;
+            checkpoint.reset();
+        }
+
+        // Reset status text
+        this.statusText.setText('Checkpoints: 0/2');
+        this.statusText.setColor('#ffff00');
+
+        // Remove win text if it exists
+        if (this.winText) {
+            this.winText.destroy();
+            this.winText = undefined;
+        }
     }
 }
 
