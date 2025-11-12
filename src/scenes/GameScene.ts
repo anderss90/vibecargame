@@ -141,6 +141,52 @@ export class GameScene extends Scene {
         this.matter.world.on('collisionstart', (event: any) => {
             this.handleCheckpointCollision(event);
         });
+
+        // Handle orientation changes on mobile
+        this.scale.on('orientationchange', () => {
+            this.handleOrientationChange();
+        });
+
+        // Handle resize events
+        this.scale.on('resize', () => {
+            this.handleResize();
+        });
+    }
+
+    private handleOrientationChange() {
+        // Update mobile controls position on orientation change
+        if (this.mobileControls) {
+            this.updateMobileControlsPosition();
+        }
+    }
+
+    private handleResize() {
+        // Update mobile controls position on resize
+        if (this.mobileControls) {
+            this.updateMobileControlsPosition();
+        }
+    }
+
+    private updateMobileControlsPosition() {
+        const buttonSize = 100;
+        const buttonSpacing = 25;
+        const bottomMargin = 40;
+        const rightMargin = 40;
+        
+        // Use scaled game dimensions
+        const screenWidth = this.scale.gameSize.width;
+        const screenHeight = this.scale.gameSize.height;
+        const centerX = screenWidth - rightMargin - buttonSize * 1.5;
+        const centerY = screenHeight - bottomMargin - buttonSize * 1.5;
+
+        // Update button positions (order: up, down, left, right as added to container)
+        const buttons = this.mobileControls!.list as Phaser.GameObjects.Container[];
+        if (buttons.length >= 4) {
+            buttons[0].setPosition(centerX, centerY - buttonSize - buttonSpacing); // Up
+            buttons[1].setPosition(centerX, centerY + buttonSize + buttonSpacing); // Down
+            buttons[2].setPosition(centerX - buttonSize - buttonSpacing, centerY); // Left
+            buttons[3].setPosition(centerX + buttonSize + buttonSpacing, centerY); // Right
+        }
     }
 
     private createMobileControls() {
@@ -161,9 +207,9 @@ export class GameScene extends Scene {
         const bottomMargin = 40;
         const rightMargin = 40;
         
-        // Calculate positions (bottom right of screen)
-        const screenWidth = this.cameras.main.width;
-        const screenHeight = this.cameras.main.height;
+        // Calculate positions (bottom right of screen) - use scaled game dimensions
+        const screenWidth = this.scale.gameSize.width;
+        const screenHeight = this.scale.gameSize.height;
         const centerX = screenWidth - rightMargin - buttonSize * 1.5;
         const centerY = screenHeight - bottomMargin - buttonSize * 1.5;
 
@@ -316,8 +362,9 @@ export class GameScene extends Scene {
         this.winText.setOrigin(0.5);
         
         // Center on screen (setScrollFactor(0) means coordinates are relative to camera viewport)
-        const centerX = this.cameras.main.width / 2;
-        const centerY = this.cameras.main.height / 2;
+        // Use scaled game dimensions for proper centering
+        const centerX = this.scale.gameSize.width / 2;
+        const centerY = this.scale.gameSize.height / 2;
         this.winText.setPosition(centerX, centerY);
         
         this.statusText.setText('VICTORY!');
