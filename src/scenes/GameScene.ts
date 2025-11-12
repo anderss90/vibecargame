@@ -201,16 +201,25 @@ export class GameScene extends Scene {
         const isMobile = this.sys.game.device.input.touch || 
                         /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
         
-        if (!isMobile) return;
+        console.log('createMobileControls - isMobile:', isMobile);
+        console.log('createMobileControls - touch support:', this.sys.game.device.input.touch);
+        console.log('createMobileControls - userAgent:', navigator.userAgent);
+        
+        if (!isMobile) {
+            console.log('createMobileControls - Not mobile, returning');
+            return;
+        }
 
         // Enable touch input for mobile
         this.input.addPointer(1); // Enable multi-touch
+        console.log('createMobileControls - Added pointer for touch');
 
         // Create container for mobile controls
         this.mobileControls = this.add.container(0, 0);
         this.mobileControls.setScrollFactor(0);
         this.mobileControls.setDepth(2000);
-        this.mobileControls.setInteractive(); // Make container interactive
+        // Don't make container interactive - let buttons handle their own events
+        console.log('createMobileControls - Created container');
 
         // Larger buttons for mobile
         const buttonSize = 100;
@@ -239,11 +248,24 @@ export class GameScene extends Scene {
 
         // Add buttons to container
         this.mobileControls.add([upButton, downButton, leftButton, rightButton]);
+        console.log('createMobileControls - Added all buttons to container');
+        console.log('createMobileControls - Button positions:', {
+            up: { x: leftCenterX, y: leftCenterY - buttonSize - buttonSpacing },
+            down: { x: leftCenterX, y: leftCenterY + buttonSize + buttonSpacing },
+            left: { x: rightCenterX - buttonSize - buttonSpacing, y: rightCenterY },
+            right: { x: rightCenterX + buttonSize + buttonSpacing, y: rightCenterY }
+        });
     }
 
     private createArrowButton(x: number, y: number, direction: 'up' | 'down' | 'left' | 'right', rotation: number): Phaser.GameObjects.Container {
         const buttonSize = 100;
+        const hitAreaPadding = 50; // Extra padding around button for easier touch detection (increased for more forgiving taps)
+        const hitAreaSize = buttonSize + (hitAreaPadding * 2);
+        console.log(`createArrowButton - Creating ${direction} button at (${x}, ${y})`);
+        
         const container = this.add.container(x, y);
+        container.setScrollFactor(0); // Keep buttons fixed on screen
+        container.setDepth(2000); // Make sure buttons are on top
         
         // Create button background (circle)
         const bg = this.add.circle(0, 0, buttonSize / 2, 0x333333, 0.8);
@@ -267,32 +289,65 @@ export class GameScene extends Scene {
         container.add([bg, arrow]);
         container.setSize(buttonSize, buttonSize);
         
-        // Enable touch events explicitly with hit area
+        // Enable touch events with larger hit area for easier mobile tapping
+        // Use a larger rectangle that extends beyond the visible button
         container.setInteractive(
-            new Phaser.Geom.Circle(0, 0, buttonSize / 2), 
-            Phaser.Geom.Circle.Contains
+            new Phaser.Geom.Rectangle(-hitAreaSize / 2, -hitAreaSize / 2, hitAreaSize, hitAreaSize), 
+            Phaser.Geom.Rectangle.Contains
         );
         
+        console.log(`createArrowButton - ${direction} button set as interactive`);
+        
+        // Store reference to bg for color changes
+        const buttonBg = bg;
+        
         // Touch/pointer events - use both pointerdown and pointerover for better mobile support
-        container.on('pointerdown', () => {
+        container.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+            console.log(`BUTTON ${direction} - pointerdown event fired`);
             this.virtualKeys[direction].isDown = true;
-            bg.setFillStyle(0x00ff00, 0.8); // Green when pressed
+            console.log(`BUTTON ${direction} - virtualKeys[${direction}].isDown =`, this.virtualKeys[direction].isDown);
+            buttonBg.setFillStyle(0x00ff00, 0.8); // Green when pressed
+            // Prevent default touch behavior
+            if (pointer.event && pointer.event.preventDefault) {
+                pointer.event.preventDefault();
+            }
         });
         
-        container.on('pointerup', () => {
+        container.on('pointerup', (pointer: Phaser.Input.Pointer) => {
+            console.log(`BUTTON ${direction} - pointerup event fired`);
             this.virtualKeys[direction].isDown = false;
-            bg.setFillStyle(0x333333, 0.8); // Back to gray
+            console.log(`BUTTON ${direction} - virtualKeys[${direction}].isDown =`, this.virtualKeys[direction].isDown);
+            buttonBg.setFillStyle(0x333333, 0.8); // Back to gray
+            if (pointer.event && pointer.event.preventDefault) {
+                pointer.event.preventDefault();
+            }
         });
         
-        container.on('pointerout', () => {
+        container.on('pointerout', (pointer: Phaser.Input.Pointer) => {
+            console.log(`BUTTON ${direction} - pointerout event fired`);
             this.virtualKeys[direction].isDown = false;
-            bg.setFillStyle(0x333333, 0.8); // Back to gray
+            buttonBg.setFillStyle(0x333333, 0.8); // Back to gray
         });
         
         // Also handle pointercancel for mobile (when touch is interrupted)
-        container.on('pointercancel', () => {
+        container.on('pointercancel', (pointer: Phaser.Input.Pointer) => {
+            console.log(`BUTTON ${direction} - pointercancel event fired`);
             this.virtualKeys[direction].isDown = false;
-            bg.setFillStyle(0x333333, 0.8); // Back to gray
+            buttonBg.setFillStyle(0x333333, 0.8); // Back to gray
+        });
+        
+        // Handle pointermove to maintain press state while dragging
+        container.on('pointermove', (pointer: Phaser.Input.Pointer) => {
+            if (pointer.isDown) {
+                console.log(`BUTTON ${direction} - pointermove while down`);
+                this.virtualKeys[direction].isDown = true;
+                buttonBg.setFillStyle(0x00ff00, 0.8);
+            }
+        });
+        
+        // Also listen for any pointer events
+        container.on('pointerover', () => {
+            console.log(`BUTTON ${direction} - pointerover event fired`);
         });
         
         return container;

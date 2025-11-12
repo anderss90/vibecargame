@@ -65,6 +65,27 @@ export class Car {
         const down = this.inputKeys.down.some(key => key.isDown);
         const left = this.inputKeys.left.some(key => key.isDown);
         const right = this.inputKeys.right.some(key => key.isDown);
+        
+        // Debug logging for virtual keys (only log when they change or are active)
+        if (up || down || left || right) {
+            const virtualUp = this.inputKeys.up.find(k => !('isDown' in k) || typeof (k as any).isDown === 'boolean');
+            const virtualDown = this.inputKeys.down.find(k => !('isDown' in k) || typeof (k as any).isDown === 'boolean');
+            const virtualLeft = this.inputKeys.left.find(k => !('isDown' in k) || typeof (k as any).isDown === 'boolean');
+            const virtualRight = this.inputKeys.right.find(k => !('isDown' in k) || typeof (k as any).isDown === 'boolean');
+            
+            if (virtualUp && 'isDown' in virtualUp) {
+                console.log('CAR UPDATE - virtualKeys.up.isDown =', (virtualUp as any).isDown, 'up =', up);
+            }
+            if (virtualDown && 'isDown' in virtualDown) {
+                console.log('CAR UPDATE - virtualKeys.down.isDown =', (virtualDown as any).isDown, 'down =', down);
+            }
+            if (virtualLeft && 'isDown' in virtualLeft) {
+                console.log('CAR UPDATE - virtualKeys.left.isDown =', (virtualLeft as any).isDown, 'left =', left);
+            }
+            if (virtualRight && 'isDown' in virtualRight) {
+                console.log('CAR UPDATE - virtualKeys.right.isDown =', (virtualRight as any).isDown, 'right =', right);
+            }
+        }
 
         // Calculate velocity
         let velocityX = body.velocity.x;
