@@ -85,7 +85,7 @@ export class GameScene extends Scene {
         this.createMobileControls();
 
         // Create speed display text (top of screen, 2x size)
-        this.speedText = this.add.text(10, 10, 'Speed: 0', {
+        this.speedText = this.add.text(10, 5, 'Speed: 0', {
             fontSize: '48px',
             color: '#ffffff',
             stroke: '#000000',
@@ -95,7 +95,7 @@ export class GameScene extends Scene {
         this.speedText.setDepth(1000); // Make sure it's on top
 
         // Create status text (top of screen, 2x size)
-        this.statusText = this.add.text(10, 70, 'Checkpoints: 0/2', {
+        this.statusText = this.add.text(10, 60, 'Checkpoints: 0/2', {
             fontSize: '40px',
             color: '#ffff00',
             stroke: '#000000',
@@ -105,7 +105,7 @@ export class GameScene extends Scene {
         this.statusText.setDepth(1000);
 
         // Create controls text (top of screen, 2x size)
-        this.controlsText = this.add.text(10, 130, 'Controls: Arrow Keys or WASD', {
+        this.controlsText = this.add.text(10, 110, 'Controls: Arrow Keys or WASD', {
             fontSize: '36px',
             color: '#ffffff',
             stroke: '#000000',
@@ -115,7 +115,7 @@ export class GameScene extends Scene {
         this.controlsText.setDepth(1000);
 
         // Create restart text (top of screen, 2x size)
-        this.restartText = this.add.text(10, 190, 'Press R to restart', {
+        this.restartText = this.add.text(10, 155, 'Press R to restart', {
             fontSize: '36px',
             color: '#ffff00',
             stroke: '#000000',
@@ -171,21 +171,28 @@ export class GameScene extends Scene {
         const buttonSize = 100;
         const buttonSpacing = 25;
         const bottomMargin = 40;
+        const leftMargin = 40;
         const rightMargin = 40;
         
         // Use scaled game dimensions
         const screenWidth = this.scale.gameSize.width;
         const screenHeight = this.scale.gameSize.height;
-        const centerX = screenWidth - rightMargin - buttonSize * 1.5;
-        const centerY = screenHeight - bottomMargin - buttonSize * 1.5;
+        
+        // Left side: Up and Down buttons (vertical)
+        const leftCenterX = leftMargin + buttonSize * 0.5;
+        const leftCenterY = screenHeight - bottomMargin - buttonSize * 0.5;
+        
+        // Right side: Left and Right buttons (horizontal)
+        const rightCenterX = screenWidth - rightMargin - buttonSize * 0.5;
+        const rightCenterY = screenHeight - bottomMargin - buttonSize * 0.5;
 
         // Update button positions (order: up, down, left, right as added to container)
         const buttons = this.mobileControls!.list as Phaser.GameObjects.Container[];
         if (buttons.length >= 4) {
-            buttons[0].setPosition(centerX, centerY - buttonSize - buttonSpacing); // Up
-            buttons[1].setPosition(centerX, centerY + buttonSize + buttonSpacing); // Down
-            buttons[2].setPosition(centerX - buttonSize - buttonSpacing, centerY); // Left
-            buttons[3].setPosition(centerX + buttonSize + buttonSpacing, centerY); // Right
+            buttons[0].setPosition(leftCenterX, leftCenterY - buttonSize - buttonSpacing); // Up (left side)
+            buttons[1].setPosition(leftCenterX, leftCenterY + buttonSize + buttonSpacing); // Down (left side)
+            buttons[2].setPosition(rightCenterX - buttonSize - buttonSpacing, rightCenterY); // Left (right side)
+            buttons[3].setPosition(rightCenterX + buttonSize + buttonSpacing, rightCenterY); // Right (right side)
         }
     }
 
@@ -196,28 +203,39 @@ export class GameScene extends Scene {
         
         if (!isMobile) return;
 
+        // Enable touch input for mobile
+        this.input.addPointer(1); // Enable multi-touch
+
         // Create container for mobile controls
         this.mobileControls = this.add.container(0, 0);
         this.mobileControls.setScrollFactor(0);
         this.mobileControls.setDepth(2000);
+        this.mobileControls.setInteractive(); // Make container interactive
 
         // Larger buttons for mobile
         const buttonSize = 100;
         const buttonSpacing = 25;
         const bottomMargin = 40;
+        const leftMargin = 40;
         const rightMargin = 40;
         
-        // Calculate positions (bottom right of screen) - use scaled game dimensions
+        // Calculate positions - use scaled game dimensions
         const screenWidth = this.scale.gameSize.width;
         const screenHeight = this.scale.gameSize.height;
-        const centerX = screenWidth - rightMargin - buttonSize * 1.5;
-        const centerY = screenHeight - bottomMargin - buttonSize * 1.5;
+        
+        // Left side: Up and Down buttons (vertical)
+        const leftCenterX = leftMargin + buttonSize * 0.5;
+        const leftCenterY = screenHeight - bottomMargin - buttonSize * 0.5;
+        
+        // Right side: Left and Right buttons (horizontal)
+        const rightCenterX = screenWidth - rightMargin - buttonSize * 0.5;
+        const rightCenterY = screenHeight - bottomMargin - buttonSize * 0.5;
 
         // Create arrow buttons
-        const upButton = this.createArrowButton(centerX, centerY - buttonSize - buttonSpacing, 'up', 0);
-        const leftButton = this.createArrowButton(centerX - buttonSize - buttonSpacing, centerY, 'left', -90);
-        const downButton = this.createArrowButton(centerX, centerY + buttonSize + buttonSpacing, 'down', 180);
-        const rightButton = this.createArrowButton(centerX + buttonSize + buttonSpacing, centerY, 'right', 90);
+        const upButton = this.createArrowButton(leftCenterX, leftCenterY - buttonSize - buttonSpacing, 'up', 0);
+        const downButton = this.createArrowButton(leftCenterX, leftCenterY + buttonSize + buttonSpacing, 'down', 180);
+        const leftButton = this.createArrowButton(rightCenterX - buttonSize - buttonSpacing, rightCenterY, 'left', -90);
+        const rightButton = this.createArrowButton(rightCenterX + buttonSize + buttonSpacing, rightCenterY, 'right', 90);
 
         // Add buttons to container
         this.mobileControls.add([upButton, downButton, leftButton, rightButton]);
@@ -248,9 +266,14 @@ export class GameScene extends Scene {
         
         container.add([bg, arrow]);
         container.setSize(buttonSize, buttonSize);
-        container.setInteractive(new Phaser.Geom.Circle(0, 0, buttonSize / 2), Phaser.Geom.Circle.Contains);
         
-        // Touch/pointer events
+        // Enable touch events explicitly with hit area
+        container.setInteractive(
+            new Phaser.Geom.Circle(0, 0, buttonSize / 2), 
+            Phaser.Geom.Circle.Contains
+        );
+        
+        // Touch/pointer events - use both pointerdown and pointerover for better mobile support
         container.on('pointerdown', () => {
             this.virtualKeys[direction].isDown = true;
             bg.setFillStyle(0x00ff00, 0.8); // Green when pressed
@@ -262,6 +285,12 @@ export class GameScene extends Scene {
         });
         
         container.on('pointerout', () => {
+            this.virtualKeys[direction].isDown = false;
+            bg.setFillStyle(0x333333, 0.8); // Back to gray
+        });
+        
+        // Also handle pointercancel for mobile (when touch is interrupted)
+        container.on('pointercancel', () => {
             this.virtualKeys[direction].isDown = false;
             bg.setFillStyle(0x333333, 0.8); // Back to gray
         });
