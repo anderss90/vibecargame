@@ -11,10 +11,14 @@ export class Car {
         right: (Phaser.Input.Keyboard.Key | { isDown: boolean })[];
     } | null = null;
     
-    private readonly maxSpeed = 100;
-    private readonly acceleration = 1; // Increased for better responsiveness
-    private readonly maxAngularVelocity = 0.06; // Radians per frame - physically accurate rotation rate
+    private exhaustParticles?: Phaser.GameObjects.Particles.ParticleEmitter;
+    private tireParticles?: Phaser.GameObjects.Particles.ParticleEmitter;
+    
+    private readonly maxSpeed = 120; // Increased max speed
+    private readonly acceleration = 1.5; // More responsive acceleration
+    private readonly maxAngularVelocity = 0.08; // Slightly faster turning
     private readonly friction = 0.40; // Reduced friction for better movement
+    private lastSpeed: number = 0;
 
     constructor(scene: Scene, x: number, y: number) {
         this.scene = scene;
@@ -43,6 +47,42 @@ export class Car {
         // Ensure car rotates around its center (center of mass)
         // The body is already centered by default
         // Car can now rotate - we control rotation through angular velocity
+        
+        // Create exhaust particle effect
+        this.createExhaustParticles();
+        
+        // Create tire smoke particle effect
+        this.createTireParticles();
+    }
+    
+    private createExhaustParticles() {
+        const particles = this.scene.add.particles(0, 0, 'car', {
+            speed: { min: 20, max: 40 },
+            scale: { start: 0.3, end: 0 },
+            tint: [0x666666, 0x888888, 0xaaaaaa],
+            lifespan: 300,
+            frequency: 50,
+            alpha: { start: 0.8, end: 0 },
+            blendMode: 'ADD'
+        });
+        
+        particles.startFollow(this.sprite, 0, 20, false);
+        this.exhaustParticles = particles;
+    }
+    
+    private createTireParticles() {
+        const particles = this.scene.add.particles(0, 0, 'car', {
+            speed: { min: 10, max: 30 },
+            scale: { start: 0.4, end: 0 },
+            tint: [0x333333, 0x444444],
+            lifespan: 400,
+            frequency: 100,
+            alpha: { start: 0.6, end: 0 },
+            angle: { min: 0, max: 360 }
+        });
+        
+        particles.startFollow(this.sprite, 0, 0, false);
+        this.tireParticles = particles;
     }
 
     setInputKeys(keys: {
@@ -94,15 +134,25 @@ export class Car {
         // Calculate current speed
         const currentSpeed = Math.sqrt(velocityX * velocityX + velocityY * velocityY);
         
-        // Apply acceleration
+        // Apply acceleration with speed-based curve for snappier feel
+        const speedRatio = currentSpeed / this.maxSpeed;
+        const accelerationMultiplier = 1 + (1 - speedRatio) * 0.5; // More acceleration at low speeds
+        
         if (up) {
-            velocityX += Math.cos(angle) * this.acceleration;
-            velocityY += Math.sin(angle) * this.acceleration;
+            const accel = this.acceleration * accelerationMultiplier;
+            velocityX += Math.cos(angle) * accel;
+            velocityY += Math.sin(angle) * accel;
         }
         if (down) {
-            velocityX -= Math.cos(angle) * this.acceleration;
-            velocityY -= Math.sin(angle) * this.acceleration;
+            const accel = this.acceleration * accelerationMultiplier * 0.7; // Reverse is slower
+            velocityX -= Math.cos(angle) * accel;
+            velocityY -= Math.sin(angle) * accel;
         }
+        
+        // Apply air resistance (more realistic deceleration)
+        const airResistance = 0.98;
+        velocityX *= airResistance;
+        velocityY *= airResistance;
 
         // Apply friction first (before limiting speed)
         //velocityX *= this.friction;
@@ -142,6 +192,31 @@ export class Car {
         
         // Apply angular velocity for smooth, physically accurate rotation
         Matter.Body.setAngularVelocity(body, angularVelocity);
+        
+        // Update particle effects based on movement
+        this.updateParticleEffects(currentSpeed, isTurning);
+        
+        this.lastSpeed = currentSpeed;
+    }
+    
+    private updateParticleEffects(speed: number, isTurning: boolean) {
+        const speedRatio = speed / this.maxSpeed;
+        
+        // Exhaust particles - more intense when moving faster
+        if (this.exhaustParticles) {
+            const emissionRate = 20 + speedRatio * 80;
+            this.exhaustParticles.setFrequency(emissionRate);
+        }
+        
+        // Tire smoke - more when turning at speed
+        if (this.tireParticles) {
+            if (isTurning && speed > 20) {
+                const turnIntensity = Math.min(speedRatio * 1.5, 1);
+                this.tireParticles.setFrequency(50 + turnIntensity * 150);
+            } else {
+                this.tireParticles.setFrequency(0); // No smoke when not turning
+            }
+        }
     }
 
     getPosition(): { x: number; y: number } {

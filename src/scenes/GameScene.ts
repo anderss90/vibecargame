@@ -55,9 +55,12 @@ export class GameScene extends Scene {
         
         // Setup camera to follow car (bounds for wider track)
         this.cameras.main.setBounds(0, 0, 9600, 4800);
-        this.cameras.main.startFollow(this.car.sprite);
+        this.cameras.main.startFollow(this.car.sprite, false, 0.1, 0.1); // Smooth camera follow
         // Zoom out 2x (zoom 0.5 shows 2x more area)
         this.cameras.main.setZoom(0.5);
+        
+        // Add camera shake effect based on speed
+        this.cameras.main.setDeadzone(100, 100);
         
         // Setup input
         this.cursors = this.input.keyboard!.createCursorKeys();
@@ -365,10 +368,32 @@ export class GameScene extends Scene {
             // Update speed display
             const speed = this.car.getSpeed();
             this.speedText.setText(`Speed: ${speed.toFixed(1)}`);
+            
+            // Add dynamic camera effects based on speed
+            this.updateCameraEffects(speed);
 
             // Check checkpoint collisions manually (backup method)
             this.checkCheckpointCollisions();
         }
+    }
+    
+    private updateCameraEffects(speed: number) {
+        const maxSpeed = 120;
+        const speedRatio = Math.min(speed / maxSpeed, 1);
+        
+        // Subtle camera shake at high speeds
+        if (speed > 50) {
+            const shakeIntensity = (speedRatio - 0.4) * 2; // Start shaking at 40% speed
+            const shakeX = (Math.random() - 0.5) * shakeIntensity * 2;
+            const shakeY = (Math.random() - 0.5) * shakeIntensity * 2;
+            this.cameras.main.setScroll(this.cameras.main.scrollX + shakeX, this.cameras.main.scrollY + shakeY);
+        }
+        
+        // Slight zoom out at high speeds for better visibility
+        const targetZoom = 0.5 - (speedRatio * 0.1);
+        const currentZoom = this.cameras.main.zoom;
+        const zoomDiff = targetZoom - currentZoom;
+        this.cameras.main.setZoom(currentZoom + zoomDiff * 0.1); // Smooth zoom transition
     }
 
     private handleCheckpointCollision(event: any) {
